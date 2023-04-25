@@ -1,0 +1,128 @@
+
+```{r}
+library(dplyr)
+library(stringi)
+library(data.table)
+library(arrow)
+```
+
+
+```{r}
+medpar_directory <- "../data/intermediate/medpar_data_subset.rds"
+medpar_data <- readRDS(medpar_directory)
+head(medpar_data, 2)
+```
+
+```{r}
+# Create directory to save feather files
+dir.create("../data/intermediate/expenditures", recursive = TRUE)
+
+# Split dataframe by year and save to feather files
+for (year in unique(medpar_data$year)) {
+  # Subset data for current year
+  df_year <- subset(medpar_data, year == year)
+  
+  # Define file name for current year
+  file_name <- paste0("../data/intermediate/expenditures/expenditure_data_", year, ".feather")
+  
+  # Save subset to feather file
+  write_feather(df_year, file_name)
+}
+```
+```{r}
+# Expenditure Dataset for 2012
+filepath_exp <- "../data/intermediate/expenditures/expenditure_data_2012.feather"
+expenditure_data <- read_feather(filepath_exp, as_data_frame = TRUE)
+head(expenditure_data,2)
+
+
+```
+```{r}
+names(expenditure_data)
+```
+
+
+```{r}
+# Covariates Dataset for 2012
+filepath_covar <- "../data/intermediate/covariates/medicare_mortality_pm25_zip_2012.feather"
+covariates_data <- read_feather(filepath_covar, as_data_frame = TRUE)
+head(covariates_data,2)
+
+
+```
+```{r}
+names(covariates_data)
+```
+```{r}
+names(expenditure_data)
+```
+
+
+
+```{r}
+
+
+grouped_data <- setDT(expenditure_data)[, .(total_yearly_medicare_payment = sum(Total_Medicare_Payment),
+                                             zipcode_R = first(zipcode_R),
+                                             age = first(age),
+                                             sex = first(sex),
+                                             race = first(race)),
+                                        by = .(year, QID)]
+
+
+head(grouped_data)
+```
+
+
+```{r}
+
+
+reverse_zipcode <- function(data) {
+  
+  # Make a copy of the input data frame
+  modified_data <- data
+  
+  # Reverse the characters in the zipcode_R column using stri_reverse() and assign the result to a new column called zipcode
+  modified_data$zipcode <- stri_reverse(as.character(modified_data$zipcode_R))
+  
+  # Return the modified data frame
+  return(modified_data)
+}
+```
+
+```{r}
+grouped_data_new <- reverse_zipcode(grouped_data)
+grouped_data_new <- subset(grouped_data_new, select = c(-zipcode_R))
+
+head(grouped_data_new)
+```
+
+```{r}
+for (year in 2012:2014) {
+  # Expenditure Dataset for current year
+  filepath_exp <- paste0("../data/intermediate/expenditures/expenditure_data_", year, ".feather")
+  expenditure_data <- read_feather(filepath_exp, as_data_frame = TRUE)
+  
+  # Aggregate data
+  grouped_data <- setDT(expenditure_data)[, .(total_yearly_medicare_payment = sum(Total_Medicare_Payment),                                               
+                                              zipcode_R = first(zipcode_R),                                               
+                                              age = first(age),                                               
+                                              sex = first(sex),                                               
+                                              race = first(race)),                                          
+                                          by = .(year, QID)]
+  
+  # Reverse zipcode and drop zipcode_R column
+  grouped_data_new <- grouped_data[, zipcode := stri_reverse(zipcode_R)][, zipcode_R := NULL]
+  
+  # Save aggregated data
+  filepath_agg <- paste0("../data/output/aggregate/expenditures_aggregated_", year, ".feather")
+  write_feather(grouped_data_new, filepath_agg)
+}
+```
+
+```{r}
+data_path <- "../data/output/aggregate/expenditures_aggregated_2012.feather" 
+data_test <- read_feather(data_path, as_data_frame = TRUE)
+head(data_test)
+```
+

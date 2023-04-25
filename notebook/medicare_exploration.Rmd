@@ -1,0 +1,95 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+library(fst)
+```
+
+```{r}
+medpar_data <- readRDS("../data/input/xw-causal-inf-quantiles-yw/zipcode_er_num.rds")
+head(medpar_data, 2)
+```
+```{r}
+names(medpar_data)
+```
+```{r}
+unique(medpar_data$year)
+```
+
+```{r}
+
+#get only data from 2012-2014 
+medpar_data_subset <- medpar_data[medpar_data$year >= 2012 & medpar_data$year <= 2014, ]
+head(medpar_data_subset)
+```
+
+```{r}
+medpar_data_subset_cols <- medpar_data_subset[, c("adate", "LOS_DAY_CNT", "ddate", "DRG_PRICE_AMT", "DRG_OUTLIER_PMT_AMT", "PASS_THRU_AMT", "Total_Medicare_Payment", "year", "zipcode_R", "QID", "prov_num", "age", "sex", "race")]
+
+```
+
+```{r}
+saveRDS(medpar_data_subset_cols, "../data/intermediate/medpar_data_subset.rds")
+print("saved to ../data/intermediate")
+```
+
+Expenditures data
+
+```{r}
+expenditure_data <- read_fst("../data/input/aggregate_medicare_data_2010to2016/aggregate_medicare_data_2010to2016.fst")
+head(expenditure_data)
+```
+```{r}
+names(expenditure_data)
+```
+```{r}
+unique(expenditure_data$year)
+```
+
+
+```{r}
+expenditure_data_subset <- expenditure_data[expenditure_data$year >= 2012 & medpar_data$year <= 2014, ]
+```
+```{r}
+
+filepath_data <- "../data/input/aggregated_2000-2016_medicare_mortality_pm25_zip/aggregate_data.feather"
+df_data <- read_feather(filepath_data, as_data_frame = TRUE)
+head(df_data)
+```
+```{r}
+unique(df_data$year)
+
+#split by year, join together 
+# beneficiary has several admission (many to many relationship)
+# add total expenditures (Total_Medicare_Payment) aggregate by beneficiary ID per year, other expenditures we won't provide
+# merge by beneficiary, year, 
+
+```
+
+```{r}
+
+# Create directory to save feather files
+dir.create("../data/intermediate/covariates", recursive = TRUE)
+
+# Split dataframe by year and save to feather files
+for (year in unique(df_data$year)) {
+  # Subset data for current year
+  df_year <- subset(df_data, year == year)
+  
+  # Define file name for current year
+  file_name <- paste0("../data/intermediate/covariates/medicare_mortality_pm25_zip_", year, ".feather")
+  
+  # Save subset to feather file
+  write_feather(df_year, file_name)
+}
+
+```
+
+
+
+
