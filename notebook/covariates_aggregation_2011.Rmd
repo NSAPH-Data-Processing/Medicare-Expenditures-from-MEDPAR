@@ -1,0 +1,50 @@
+
+```{r}
+library(dplyr)
+library(stringi)
+library(data.table)
+library(arrow)
+library(fst)
+```
+
+```{r}
+medpar_directory <- "../data/intermediate/expenditures/expenditure_data_2011.feather"
+medpar_data <- read_feather(medpar_directory, as_data_frame = TRUE)
+head(medpar_data, 2)
+```
+
+```{r}
+names(medpar_data)
+```
+
+
+
+```{r}
+# Covariates Datase
+covariates_data <- read_fst("../data/input/aggregate_medicare_data_2010to2016/aggregate_medicare_data_2010to2016.fst")
+head(covariates_data,2)
+
+```
+
+
+```{r}
+print("test2")
+```
+
+```{r}
+names(medpar_data)
+```
+
+
+
+```{r}
+covariates_data <- covariates_data %>% rename(QID = qid)
+joined_data <- medpar_data %>% 
+  left_join(covariates_data, by = c("QID", "year"))
+head(joined_data)
+
+```
+```{r}
+write_feather(joined_data, "../data/output/expenditure_covariates_2011.feather")
+```
+

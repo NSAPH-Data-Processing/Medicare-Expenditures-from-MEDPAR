@@ -8,8 +8,8 @@ library(arrow)
 
 
 ```{r}
-medpar_directory <- "../data/intermediate/medpar_data_subset.rds"
-medpar_data <- readRDS(medpar_directory)
+medpar_directory <- "../data/intermediate/medpar_data_subset_2011.feather"
+medpar_data <- read_feather(medpar_directory, as_data_frame = TRUE)
 head(medpar_data, 2)
 ```
 
