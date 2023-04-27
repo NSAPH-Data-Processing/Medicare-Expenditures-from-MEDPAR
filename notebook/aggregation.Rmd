@@ -18,12 +18,12 @@ head(medpar_data, 2)
 dir.create("../data/intermediate/expenditures", recursive = TRUE)
 
 # Split dataframe by year and save to feather files
-for (year in unique(medpar_data$year)) {
+for (year in 2000:2016) {
   # Subset data for current year
   df_year <- subset(medpar_data, year == year)
   
   # Define file name for current year
-  file_name <- paste0("../data/intermediate/expenditures/expenditure_data_", year, ".feather")
+  file_name <- paste0("../data/intermediate/expenditures/expenditure_data_new_", year, ".feather")
   
   # Save subset to feather file
   write_feather(df_year, file_name)

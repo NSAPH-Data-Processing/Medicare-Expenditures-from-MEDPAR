@@ -1,0 +1,266 @@
+
+```{r}
+library(dplyr)
+library(stringi)
+library(data.table)
+library(arrow)
+```
+
+
+
+```{r}
+data_path <- "../data/intermediate/expenditures/expenditure_data_2012.feather"
+expenditure_aggregated <- read_feather(data_path, as_data_frame = TRUE)
+head(expenditure_aggregated)
+```
+
+```{r}
+data_path2 <- "../data/output/aggregate/expenditures_aggregated_2012.feather"
+expenditure_aggregated2 <- read_feather(data_path2, as_data_frame = TRUE)
+head(expenditure_aggregated2)
+```
+```{r}
+num_unique_zipcodes <- expenditure_aggregated2 %>% 
+  distinct(zipcode) %>% 
+  nrow()
+
+print(num_unique_zipcodes)
+
+```
+
+
+```{r}
+# Covariates Dataset for 2012
+filepath_covar <- "../data/intermediate/covariates/medicare_mortality_pm25_zip_2012.feather"
+covariates_data <- read_feather(filepath_covar, as_data_frame = TRUE) %>%
+  filter(year == 2012) 
+
+names(covariates_data)
+```
+
+```{r}
+
+# Convert covariates_data to a data.table
+setDT(covariates_data)
+
+# Group by zip and year, and select the first value for the specified columns
+covariates_data_first <- covariates_data[, .(    pm25_ensemble = pm25_ensemble[1],
+    mean_bmi = mean_bmi[1],
+    smoke_rate = smoke_rate[1],
+    hispanic = hispanic[1],
+    pct_blk = pct_blk[1],
+    medhouseholdincome = medhouseholdincome[1],
+    medianhousevalue = medianhousevalue[1],
+    poverty = poverty[1],
+    education = education[1],
+    popdensity = popdensity[1],
+    pct_owner_occ = pct_owner_occ[1],
+    summer_tmmx = summer_tmmx[1],
+    winter_tmmx = winter_tmmx[1],
+    summer_rmax = summer_rmax[1],
+    winter_rmax = winter_rmax[1],
+    region = region[1]
+), by = c("zip", "year")]
+
+```
+
+```{r}
+head(covariates_data_first)
+```
+
+```{r}
+reverse_zipcode <- function(data) {
+  
+  # Make a copy of the input data frame
+  modified_data <- data
+  
+  # Reverse the characters in the zipcode_R column using stri_reverse() and assign the result to a new column called zipcode
+  modified_data$zipcode <- stri_reverse(as.character(modified_data$zipcode_R))
+  modified_data <- modified_data %>%
+  select(-zipcode_R)
+  # Return the modified data frame
+  return(modified_data)
+}
+```
+
+```{r}
+head(expenditure_aggregated2)
+```
+
+```{r}
+
+# Convert data frames to data tables
+setDT(expenditure_aggregated2)
+setDT(covariates_data_first)
+
+joined_data <- covariates_data_first[expenditure_aggregated2,
+                                   on = .(zip = zipcode,
+                                          year = year),
+                                   nomatch = 0L]
+
+
+```
+
+```{r}
+joined_data2 <- merge(expenditure_aggregated2, covariates_data_first, by.x = "zipcode", by.y = "zip", all.x = TRUE)
+
+```
+
+```{r}
+distinct_rows <- joined_data2 %>%
+  filter(!is.na(pm25_ensemble)) %>%
+  distinct() 
+
+head(distinct_rows)
+```
+
+```{r}
+head(joined_data)
+```
+
+```{r}
+# Aggregation for 2012-2014
+data_path2 <- "../data/output/aggregate/expenditures_aggregated_2012.feather"
+expenditure_aggregated2 <- read_feather(data_path2, as_data_frame = TRUE)
+
+# Covariates Dataset for 2012
+filepath_covar <- "../data/intermediate/covariates/medicare_mortality_pm25_zip_2012.feather"
+covariates_data <- read_feather(filepath_covar, as_data_frame = TRUE) %>%
+  filter(year == 2012) 
+
+
+# Convert covariates_data to a data.table
+setDT(covariates_data)
+
+# Group by zip and year, and select the first value for the specified columns
+covariates_data_first <- covariates_data[, .(    pm25_ensemble = pm25_ensemble[1],
+    mean_bmi = mean_bmi[1],
+    smoke_rate = smoke_rate[1],
+    hispanic = hispanic[1],
+    pct_blk = pct_blk[1],
+    medhouseholdincome = medhouseholdincome[1],
+    medianhousevalue = medianhousevalue[1],
+    poverty = poverty[1],
+    education = education[1],
+    popdensity = popdensity[1],
+    pct_owner_occ = pct_owner_occ[1],
+    summer_tmmx = summer_tmmx[1],
+    winter_tmmx = winter_tmmx[1],
+    summer_rmax = summer_rmax[1],
+    winter_rmax = winter_rmax[1],
+    region = region[1]
+), by = c("zip", "year")]
+
+joined_data2 <- merge(expenditure_aggregated2, covariates_data_first, by.x = "zipcode", by.y = "zip", all.x = TRUE)
+
+distinct_rows <- joined_data2 %>%
+  filter(!is.na(pm25_ensemble)) %>%
+  distinct() 
+
+# Save aggregated data
+filepath_agg <- paste0("../data/output/covariate_expenditure_aggregate/covariate_expenditure_aggregated_", 2012, ".feather")
+write_feather(distinct_rows, filepath_agg)
+
+
+```
+
+```{r}
+library(data.table)
+
+# Loop through years 2012-2014
+for (year in 2012:2014) {
+  # Load expenditure data for the year
+  data_path <- paste0("../data/output/aggregate/expenditures_aggregated_", year, ".feather")
+  expenditure_data <- read_feather(data_path, as_data_frame = TRUE)
+  yearss <- year 
+  # Load covariates data for the year
+  covariates_path <- paste0("../data/intermediate/covariates/medicare_mortality_pm25_zip_", year, ".feather")
+  covariates_data <- read_feather(covariates_path, as_data_frame = TRUE) %>%
+  filter(year == yearss) 
+  # Convert covariates_data to a data.table
+  setDT(covariates_data)
+  # Select first value of covariates by zip and year
+  covariates_data_first <- covariates_data[, .(pm25_ensemble = pm25_ensemble[1],
+                                                mean_bmi = mean_bmi[1],
+                                                smoke_rate = smoke_rate[1],
+                                                hispanic = hispanic[1],
+                                                pct_blk = pct_blk[1],
+                                                medhouseholdincome = medhouseholdincome[1],
+                                                medianhousevalue = medianhousevalue[1],
+                                                poverty = poverty[1],
+                                                education = education[1],
+                                                popdensity = popdensity[1],
+                                                pct_owner_occ = pct_owner_occ[1],
+                                                summer_tmmx = summer_tmmx[1],
+                                                winter_tmmx = winter_tmmx[1],
+                                                summer_rmax = summer_rmax[1],
+                                                winter_rmax = winter_rmax[1],
+                                                region = region[1]), 
+                                           by = c("zip", "year")]
+  
+  # Left join expenditure and covariates data by zipcode
+  
+  joined_data <- merge(expenditure_data, covariates_data_first, by.x = "zipcode", by.y = "zip", all.x = TRUE)
+  
+  # Select distinct rows where pm25_ensemble is not NA
+  distinct_rows <- joined_data[!is.na(pm25_ensemble)][, unique(.SD), by = names(joined_data)]
+  
+  # Save aggregated data
+  filepath_agg <- paste0("../data/output/covariate_expenditure_aggregate/covariate_expenditure_aggregated_", year, ".feather")
+  write_feather(distinct_rows, filepath_agg)
+}
+
+```
+
+```{r}
+test <- read_feather("../data/output/covariate_expenditure_aggregate/covariate_expenditure_aggregated_2012.feather", as_data_frame = TRUE)
+
+head(test)
+```
+
+```{r}
+
+#### FINAL 
+year <- 2013
+data_path <- paste0("../data/output/aggregate/expenditures_aggregated_", year, ".feather")
+
+  expenditure_data <- read_feather(data_path, as_data_frame = TRUE)
+  yearss <- year 
+  # Load covariates data for the year
+  covariates_path <- paste0("../data/intermediate/covariates/medicare_mortality_pm25_zip_", year, ".feather")
+  covariates_data <- read_feather(covariates_path, as_data_frame = TRUE) %>%
+  filter(year == yearss) 
+  # Convert covariates_data to a data.table
+  setDT(covariates_data)
+  setDT(expenditure_data)
+  # Select first value of covariates by zip and year
+  covariates_data_first <- covariates_data[, .(pm25_ensemble = pm25_ensemble[1],
+                                                mean_bmi = mean_bmi[1],
+                                                smoke_rate = smoke_rate[1],
+                                                hispanic = hispanic[1],
+                                                pct_blk = pct_blk[1],
+                                                medhouseholdincome = medhouseholdincome[1],
+                                                medianhousevalue = medianhousevalue[1],
+                                                poverty = poverty[1],
+                                                education = education[1],
+                                                popdensity = popdensity[1],
+                                                pct_owner_occ = pct_owner_occ[1],
+                                                summer_tmmx = summer_tmmx[1],
+                                                winter_tmmx = winter_tmmx[1],
+                                                summer_rmax = summer_rmax[1],
+                                                winter_rmax = winter_rmax[1],
+                                                region = region[1]), 
+                                           by = c("zip", "year")]
+  
+  # Left join expenditure and covariates data by zipcode
+  
+  joined_data <- merge(expenditure_data, covariates_data_first, by.x = "zipcode", by.y = "zip", all.x = TRUE)
+  
+  # Select distinct rows where pm25_ensemble is not NA
+  distinct_rows <- joined_data[!is.na(pm25_ensemble)][, unique(.SD), by = names(joined_data)]
+    # Save aggregated data
+  filepath_agg <- paste0("../data/output/covariate_expenditure_aggregate/covariate_expenditure_aggregated_", year, ".feather")
+  write_feather(distinct_rows, filepath_agg)
+  
+```
+
