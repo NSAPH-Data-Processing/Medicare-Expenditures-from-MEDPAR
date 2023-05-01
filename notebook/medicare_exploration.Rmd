@@ -11,6 +11,22 @@ library(fst)
 ```
 
 ```{r}
+library(arrow)
+
+medpar_data <- readRDS("../data/input/xw-causal-inf-quantiles-yw/zipcode_er_num.rds")
+medpar_data_subset <- medpar_data[medpar_data$year == 2011, ]
+medpar_data_subset_cols <- medpar_data_subset[, c("adate", "LOS_DAY_CNT", "ddate", "DRG_PRICE_AMT", "DRG_OUTLIER_PMT_AMT", "PASS_THRU_AMT", "Total_Medicare_Payment", "year", "zipcode_R", "QID", "prov_num", "age", "sex", "race")]
+
+# Save as feather format
+write_feather(medpar_data_subset_cols, "../data/intermediate/expenditures/medpar_data_subset_2011.feather")
+print("saved to ../data/intermediate")
+
+```
+
+
+
+
+```{r}
 medpar_data <- readRDS("../data/input/xw-causal-inf-quantiles-yw/zipcode_er_num.rds")
 head(medpar_data, 2)
 ```
