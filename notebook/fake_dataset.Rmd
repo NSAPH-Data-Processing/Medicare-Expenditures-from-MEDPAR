@@ -1,0 +1,76 @@
+```{r}
+library(dplyr)
+library(stringi)
+library(data.table)
+library(arrow)
+
+# Load necessary packages
+library(dplyr)
+library(knitr)
+
+```
+
+```{r}
+data_path <- "../data/intermediate/expenditures/expenditure_data_2012.feather"
+expenditure_aggregated <- read_feather(data_path, as_data_frame = TRUE)
+head(expenditure_aggregated)
+
+```
+```{r}
+names(expenditure_aggregated)
+```
+```{r}
+# Extract column names and data
+colnames <- names(expenditure_aggregated)
+data_types <- sapply(expenditure_aggregated, class)
+
+# Create a markdown table
+cat("| ", paste(c("Column Name", "Data Type"), collapse = " | "), " |\n")
+cat("| ", paste(rep("---", 2), collapse = " | "), " |\n")
+for (i in 1:length(colnames)) {
+  cat("| ", colnames[i], " | ", data_types[i], " |\n")
+}
+```
+
+```{r}
+data_path2 <- "../data/output/expenditure_covariates_2011.feather"
+aggregated_data_2011 <- read_feather(data_path2, as_data_frame = TRUE)
+head(aggregated_data_2011)
+```
+```{r}
+# Extract column names and data
+colnames <- names(aggregated_data_2011)
+data_types <- sapply(aggregated_data_2011, class)
+
+# Create a markdown table
+cat("| ", paste(c("Column Name", "Data Type"), collapse = " | "), " |\n")
+cat("| ", paste(rep("---", 2), collapse = " | "), " |\n")
+for (i in 1:length(colnames)) {
+  cat("| ", colnames[i], " | ", data_types[i], " |\n")
+}
+```
+
+
+```{r}
+# Covariates Dataset for 2012
+filepath_covar <- "../data/output/covariate_expenditure_aggregate/covariate_expenditure_aggregated_2012.feather"
+covariates_data <- read_feather(filepath_covar, as_data_frame = TRUE) 
+head(covariates_data)
+
+```
+
+```{r}
+names(covariates_data)
+```
+```{r}
+# Extract column names and data
+colnames <- names(covariates_data)
+data_types <- sapply(covariates_data, class)
+
+# Create a markdown table
+cat("| ", paste(c("Column Name", "Data Type"), collapse = " | "), " |\n")
+cat("| ", paste(rep("---", 2), collapse = " | "), " |\n")
+for (i in 1:length(colnames)) {
+  cat("| ", colnames[i], " | ", data_types[i], " |\n")
+}
+```

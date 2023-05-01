@@ -44,7 +44,58 @@ joined_data <- medpar_data %>%
 head(joined_data)
 
 ```
+
+
+
 ```{r}
-write_feather(joined_data, "../data/output/expenditure_covariates_2011.feather")
+data_path2 <- "../data/output/expenditure_covariates_2011.feather"
+aggregated_data_2011 <- read_feather(data_path2, as_data_frame = TRUE)
+head(aggregated_data_2011)
 ```
 
+```{r}
+library(data.table)
+
+# Select rows where pm25_ens_2010 is not empty
+aggregated_data_2011_new <- aggregated_data_2011[!is.na(aggregated_data_2011$pm25_ens_2010),]
+head(aggregated_data_2011_new)
+```
+
+
+```{r}
+reverse_zipcode <- function(data) {
+  
+  # Make a copy of the input data frame
+  modified_data <- data
+  
+  # Reverse the characters in the zipcode_R column using stri_reverse() and assign the result to a new column called zipcode
+  modified_data$zipcode <- stri_reverse(as.character(modified_data$zipcode_R))
+  modified_data <- modified_data %>%
+  select(-zipcode_R)
+  # Return the modified data frame
+  return(modified_data)
+}
+```
+
+```{r}
+aggregated_data_2011_new2 <- reverse_zipcode(aggregated_data_2011_new)
+head(aggregated_data_2011_new2)
+```
+```{r}
+# Delete the columns
+aggregated_data_2011_new2 <- subset(aggregated_data_2011_new2, select = -c(sex.y, race.y, age.y))
+
+# Rename the columns
+names(aggregated_data_2011_new2)[names(aggregated_data_2011_new2) == "sex.x"] <- "sex"
+names(aggregated_data_2011_new2)[names(aggregated_data_2011_new2) == "race.x"] <- "race"
+names(aggregated_data_2011_new2)[names(aggregated_data_2011_new2) == "age.x"] <- "age"
+
+```
+
+```{r}
+head(aggregated_data_2011_new2)
+```
+
+```{r}
+write_feather(aggregated_data_2011_new2, "../data/output/expenditure_covariates_2011.feather")
+```
