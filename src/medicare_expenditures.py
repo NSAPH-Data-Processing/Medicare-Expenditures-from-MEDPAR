@@ -7,6 +7,7 @@ def prep_df(
     year,
     adm_expenditures_prefix, 
     bene_prefix, 
+    zip_data_prefix,
     conn):
 
     query = f"""
@@ -28,20 +29,57 @@ def prep_df(
             race, 
             hmo_mo
         FROM '{bene_prefix}_{year}.parquet'
+    ), zip AS (
+        SELECT * 
+        from '{zip_data_prefix}_{year}.parquet'
     )
-    SELECT
-        bene.bene_id,
-        bene.zip,
-        bene.year,
-        bene.age,
-        bene.sex,
-        bene.race, 
-        bene.hmo_mo,
-        COALESCE(adm.length_of_stay_days, 0) as length_of_stay_days,
-        COALESCE(adm.total_medicare_payment, 0) as total_medicare_payment
-    FROM bene
-    LEFT JOIN adm
-    ON bene.bene_id = adm.bene_id AND bene.year = adm.year
+    SELECT 
+        b.bene_id, 
+        b.zip, 
+        b.year, 
+        b.age, 
+        b.sex, 
+        b.race, 
+        b.hmo_mo,
+        b.length_of_stay_days, 
+        b.total_medicare_payment, 
+        zip.pm25_ensemble, 
+        zip.mean_bmi, 
+        zip.smoke_rate, 
+        zip.hispanic, 
+        zip.pct_blk,
+        zip.medhouseholdincome, 
+        zip.medianhousevalue, 
+        zip.poverty, 
+        zip.education,
+        zip.popdensity, 
+        zip.pct_owner_occ, 
+        zip.summer_tmmx, 
+        zip.winter_tmmx,
+        zip.summer_rmax, 
+        zip.winter_rmax, 
+        zip.region
+    FROM (
+        SELECT
+            bene.bene_id,
+            bene.zip,
+            bene.year,
+            bene.age,
+            bene.sex,
+            bene.race, 
+            bene.hmo_mo,
+            COALESCE(adm.length_of_stay_days, 0) as length_of_stay_days,
+            COALESCE(adm.total_medicare_payment, 0) as total_medicare_payment
+        FROM bene
+        LEFT JOIN adm
+        ON 
+            bene.bene_id = adm.bene_id AND 
+            bene.year = adm.year
+    ) as b
+    LEFT JOIN zip
+    ON 
+        b.zip = zip.zip AND 
+        b.year = zip.year
     """
     df = conn.execute(query).fetchdf()
 
@@ -64,11 +102,13 @@ def main(args):
         args.year,
         args.adm_expenditures_prefix,
         args.dw_bene_prefix,
+        args.zip_data_prefix,
         conn)
     
-    print("## Writing data ----")
+    print("## Set index ----")
     df = df.set_index(['bene_id'])
 
+    print("## Write data ----")
     output_file = f"{args.output_prefix}_{args.year}.{args.output_format}"
     if args.output_format == "parquet":
         df.to_parquet(output_file)
@@ -96,7 +136,7 @@ if __name__ == "__main__":
                         default = "../data/input/dw_bene_xu_sabath_00_16/bene"
                        )
     parser.add_argument("--output_format", 
-                        default = "csv", 
+                        default = "parquet", 
                         choices=["parquet", "feather", "csv"]
                        )           
     parser.add_argument("--output_prefix", 
