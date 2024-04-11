@@ -27,6 +27,7 @@ def prep_df(
             age_dob as age,
             sex, 
             race, 
+            dual,
             hmo_mo
         FROM '{bene_prefix}_{year}.parquet'
     ), zip AS (
@@ -40,6 +41,7 @@ def prep_df(
         b.age, 
         b.sex, 
         b.race, 
+        b.dual,
         b.hmo_mo,
         b.length_of_stay_days, 
         b.total_medicare_payment, 
@@ -67,6 +69,7 @@ def prep_df(
             bene.age,
             bene.sex,
             bene.race, 
+            bene.dual,
             bene.hmo_mo,
             COALESCE(adm.length_of_stay_days, 0) as length_of_stay_days,
             COALESCE(adm.total_medicare_payment, 0) as total_medicare_payment
@@ -140,7 +143,7 @@ if __name__ == "__main__":
                         choices=["parquet", "feather", "csv"]
                        )           
     parser.add_argument("--output_prefix", 
-                    default = "../data/output/medicare_expenditures"
+                    default = "../data/output/medicare_expenditures/medicare_expenditures"
                    )
     args = parser.parse_args()
     
