@@ -3,12 +3,20 @@ library(tidyverse)
 library(magrittr)
 library(fst)
 library(arrow)
+library(tictoc)
 
 #### #### ####
 ## Read adm_expenditures_data ----
 #### #### ####
 
+tic("read compressed rds")
 medpar_data <- read_rds("../data/input/xw-causal-inf-quantiles-yw/zipcode_er_num.rds")
+toc()
+#read compressed rds: 766.894 sec elapsed
+#12 mins
+#40GB
+#A tibble: 114,882,647 × 47
+
 # names(medpar_data)
  # "age"                    "sex"                    "race"                   "SSA_State_CD"          
  # "SSA_CNTY_CD"            "DODFLAG"                "LOS_DAY_CNT"            "BENE_PTA_COINSRNC_AMT" 
@@ -23,46 +31,34 @@ medpar_data <- read_rds("../data/input/xw-causal-inf-quantiles-yw/zipcode_er_num
  # "adate"                  "BENE_DOD"               "ddate"                  "prov_num"              
  # "QID"                    "ccs1"                   "zipcode_R" 
 
+## prepare columns
+cols <- c("LOS_DAY_CNT", "Total_Medicare_Payment", "year", "QID")
+medpar_data <- medpar_data %>% 
+  select(cols) %>% 
+  rename(length_of_stay_days = LOS_DAY_CNT, 
+         total_medicare_payment = Total_Medicare_Payment, 
+         bene_id = QID)
+#5.91GB
+
+## write parquet files
 years_ <- unique(medpar_data$year)
 # years_
- # 1999 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014
+# 1999 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014
 
-
-cols <- c("adate", "LOS_DAY_CNT", "ddate", "DRG_PRICE_AMT", "DRG_OUTLIER_PMT_AMT", "PASS_THRU_AMT", "Total_Medicare_Payment", "year", "zipcode_R", "QID", "age", "sex", "race")
 for(y_ in years_) {
-  medpar_data_subset <- medpar_data[medpar_data$year == y_, cols]
+  medpar_data_subset <- medpar_data[medpar_data$year == y_, ]
   file_name = paste0("../data/intermediate/scratch/adm_expenditures_", y_, ".parquet")
   write_parquet(medpar_data_subset, file_name)
 }
 
 #### #### ####
-## Read dead_in_5_data ----
-#### #### ####
-
-dead_in_5_data <- read_fst("../data/input/aggregate_medicare_data_2010to2016/aggregate_medicare_data_2010to2016.fst")
-# names(dead_in_5_data)
- # "qid"                    "pm25_ens_2010"          "year"                   "zip"                   
- # "sex"                    "race"                   "age"                    "dual"                  
- # "entry_age_break"        "statecode"              "followup_year"          "followup_year_plus_one"
- # "dead"                   "pm25_ens_2011"          "mean_bmi"               "smoke_rate"            
- # "hispanic"               "pct_blk"                "medhouseholdincome"     "medianhousevalue"      
- # "poverty"                "education"              "popdensity"             "pct_owner_occ"         
- # "summer_tmmx"            "winter_tmmx"            "summer_rmax"            "winter_rmax"           
- # "dead_in_5"              "pm25_avg"               "pm25_12"                "pm25_10"
-
-years_ <- unique(dead_in_5_data$year)
-# years_
- # 2011
-
-file_name = paste0("../data/intermediate/scratch/dead_in_5_2011.parquet")
-write_parquet(dead_in_5_data, file_name)
-
-#### #### ####
 ## Read zip_data
 #### #### ####
 
-filepath_data <- "../data/input/aggregated_2000-2016_medicare_mortality_pm25_zip/aggregate_data.feather"
-zip_data <- read_feather(filepath_data, as_data_frame = TRUE)
+tic("read aggregate_data.feather") 
+zip_data <- read_feather("../data/input/aggregated_2000-2016_medicare_mortality_pm25_zip/aggregate_data.feather")
+toc()
+
 # names(zip_data)
  # "zip"                "year"               "sex"                "race"               "dual"               "entry_age_break"   
  # "followup_year"      "dead"               "time_count"         "pm25_ensemble"      "mean_bmi"           "smoke_rate"        
@@ -70,36 +66,36 @@ zip_data <- read_feather(filepath_data, as_data_frame = TRUE)
  # "popdensity"         "pct_owner_occ"      "summer_tmmx"        "winter_tmmx"        "summer_rmax"        "winter_rmax"       
  # "region"
 
-rows <- sample(1:nrow(zip_data), 10000)
-cols <- c("zip", "pm25_ensemble", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education", "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax", "region")
-write_csv(zip_data[rows, cols], "test.csv")
 
+## prepare columns
+zip_data <- zip_data %>% 
+  distinct(zip, year, region, 
+           pm25_ensemble, smoke_rate, mean_bmi, hispanic, pct_blk, 
+           medhouseholdincome, medianhousevalue, poverty, education, popdensity, 
+           pct_owner_occ, summer_tmmx, winter_tmmx, summer_rmax, winter_rmax)
+
+## write parquet files
 years_ <- unique(zip_data$year)
 #years_
 # 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016
 
-# Split dataframe by year and save to feather files
 for (y_ in years_) {
-  # Subset data for current year
-  # Group by zip
-  df <- zip_data %>% 
-    filter(year == y_) %>% 
-    distinct(zip, pm25_ensemble, mean_bmi, smoke_rate, hispanic, pct_blk, medhouseholdincome, medianhousevalue, poverty, education, popdensity, pct_owner_occ, summer_tmmx, winter_tmmx, summer_rmax, winter_rmax, region)
-  
-  # Define file name for current year
   file_name <- paste0("../data/intermediate/scratch/zip_data_", y_, ".parquet")
-  
-  # Save subset to feather file
-  write_parquet(df, file_name)
+  zip_data %>% 
+    filter(year == y_) %>% 
+    write_parquet(file_name)
 }
 
 #### #### ####
 ## Read denom_data ----
 #### #### ####
 
-denom_data <- read_fst("../data/input/denom_by_year/confounder_exposure_merged_nodups_health_2005.fst")
-names_denom <- names(denom_data)
-#names_denom
+tic("read denom_by_year")
+denom_data <- read_fst("../data/input/denom_by_year/confounder_exposure_merged_nodups_health_2005.fst",)
+toc()
+#read denom_by_year: 23.706 sec elapsed
+
+# names(denom_data)
 # "zip"                          "year"                         "qid"                         
 # "dodflag"                      "bene_dod"                     "sex"                         
 # "race"                         "age"                          "hmo_mo"                      
@@ -122,7 +118,3 @@ names_denom <- names(denom_data)
 # "cluster_cat"                  "fips_no_interp"               "fips"                        
 # "summer_tmmx"                  "summer_rmax"                  "winter_tmmx"                 
 # "winter_rmax"
-
-cols <- c("qid", "year", "age",	"sex", "race", "dual", "hmo_mo")
-write_csv(head(denom_data[1:1000, cols]), "test.csv")
-
